@@ -1,0 +1,23 @@
+{
+    "i18n-ally.localesPaths": [
+        "src/i18n",
+        "src/messages"
+    ],
+    "cSpell.words": [
+        "Governorates"
+    ],
+    "i18n-ally.keystyle": "nested",
+    "eslint.enable": true,
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact"
+    ],
+    "eslint.workingDirectories": [
+        "."
+    ],
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    }
+}

@@ -1,0 +1,21 @@
+{
+  "Index": {
+    "title": "Welcome to the app",
+    "description": "This is a bilingual app"
+  },
+  "TablePagination": {
+    "page": "Page",
+    "of": "of",
+    "rowsPerPage": "Rows per page"
+  },
+  "Governorates": {
+    "Table": {
+      "Columns": {
+        "id": "Id",
+        "name": "Name",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    }
+  }
+}
