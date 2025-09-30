@@ -29,17 +29,70 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useUserInfo } from "@/hooks/data/use-user-info"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import api from "@/lib/utils/axios"
+import { endpoints } from "@/lib/api/endpoints"
+import { removeAccessToken, removeRefreshToken } from "@/lib/utils/tokens"
+import { useRouter, usePathname } from "next/navigation"
+import { toast } from "sonner"
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
+export function NavUser() {
   const { isMobile } = useSidebar()
+  const { data: user, isLoading } = useUserInfo()
+  const queryClient = useQueryClient()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post(endpoints.auth.logout)
+      return response.data
+    },
+    onSuccess: () => {
+      // Remove tokens from localStorage
+      removeAccessToken()
+      removeRefreshToken()
+      
+      // Clear all queries
+      queryClient.clear()
+      
+      // Show success message
+      toast.success("Logged out successfully")
+      
+      // Extract locale from current path and redirect to login
+      const locale = pathname.split('/')[1] || 'en'
+      router.push(`/${locale}/login`)
+    },
+    onError: (error) => {
+      console.error("Logout failed:", error)
+      toast.error("Failed to logout. Please try again.")
+    },
+  })
+
+  const handleLogout = () => {
+    logoutMutation.mutate()
+  }
+
+  if (isLoading || !user) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <div className="grid flex-1 gap-1">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  const fullName = `${user.firstName} ${user.lastName}`
+  const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase()
 
   return (
     <SidebarMenu>
@@ -51,11 +104,11 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarImage src={user.photo?.path} alt={fullName} />
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate font-medium">{fullName}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -70,41 +123,22 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarImage src={user.photo?.path} alt={fullName} />
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate font-medium">{fullName}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+            >
               <LogOut />
-              Log out
+              {logoutMutation.isPending ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

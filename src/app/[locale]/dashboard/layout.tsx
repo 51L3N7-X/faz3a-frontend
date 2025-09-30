@@ -10,16 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ChevronRight } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import React from "react";
-import { Toaster } from "@/components/ui/sonner";
 import { ModeToggle } from "@/components/mode-toggle";
 
 function generateBreadcrumbs(pathname: string) {
@@ -39,7 +36,7 @@ function generateBreadcrumbs(pathname: string) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <Toaster richColors></Toaster>
+      {/* <Toaster richColors></Toaster> */}
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 justify-between">
