@@ -1,5 +1,5 @@
-import { CreateSubCategoryFormInput } from "@/lib/schemas/category";
 import { endpoints } from "@/lib/api/endpoints";
+import { CreateSubCategoryFormInput } from "@/lib/schemas/category";
 import api from "@/lib/utils/axios";
 import {
   MainCategoriesQueryParams,
@@ -10,7 +10,7 @@ import {
 } from "@/types";
 
 export const getMainCategories = async (
-  params?: MainCategoriesQueryParams
+  params?: MainCategoriesQueryParams,
 ): Promise<PaginatedResponse<MainCategory>> => {
   const { data } = await api.get(endpoints.categories.getMainCategories, {
     params,
@@ -20,25 +20,28 @@ export const getMainCategories = async (
 
 export const getSubCategories = async (
   parentId: number,
-  params?: QueryParams
+  params?: QueryParams,
 ): Promise<PaginatedResponse<SubCategory>> => {
   const { data } = await api.get(
     endpoints.categories.getSubCategories(parentId),
-    { params }
+    { params },
   );
   return data;
 };
 
-export const getCategory = async (
-  id: number
-): Promise<MainCategory> => {
+export const getCategory = async (id: number): Promise<MainCategory> => {
+  const { data } = await api.get(endpoints.categories.updateCategory(id));
+  return data;
+};
+
+export const getCategoryById = async (id: number): Promise<SubCategory> => {
   const { data } = await api.get(endpoints.categories.updateCategory(id));
   return data;
 };
 
 export const createSubCategory = async (
   data: CreateSubCategoryFormInput,
-  parentId: number
+  parentId: number,
 ): Promise<SubCategory> => {
   const { data: resData } = await api.post(endpoints.categories.addCategory, {
     ...data,
@@ -49,8 +52,22 @@ export const createSubCategory = async (
 
 export const updateSubCategory = async (
   id: number,
-  data: CreateSubCategoryFormInput
+  data: CreateSubCategoryFormInput,
 ): Promise<SubCategory> => {
-  const { data: resData } = await api.patch(endpoints.categories.updateCategory(id), data);
+  const { data: resData } = await api.patch(
+    endpoints.categories.updateCategory(id),
+    data,
+  );
   return resData;
+};
+
+export const getSubSubCategories = async (
+  parentId: number,
+  params?: QueryParams,
+): Promise<PaginatedResponse<SubCategory>> => {
+  const { data } = await api.get(
+    endpoints.categories.getSubSubCategories(parentId),
+    { params },
+  );
+  return data;
 };

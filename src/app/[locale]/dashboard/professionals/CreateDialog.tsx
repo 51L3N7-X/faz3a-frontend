@@ -32,6 +32,7 @@ import { useGovernorates } from "@/hooks/data/use-governorates";
 import {
   useMainCategories,
   useSubCategories,
+  useSubSubCategories,
 } from "@/hooks/data/use-categories";
 import { MultiSelect } from "@/components/multi-select";
 import {
@@ -68,6 +69,9 @@ export function CreateProfessionalDialog({
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState<
     number | null
   >(null);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<
+    number | null
+  >(null);
   const { mutate: createProfessional, isPending } = useCreateProfessional();
 
   const { governorates } = useGovernorates({ limit: 1000 });
@@ -76,6 +80,9 @@ export function CreateProfessionalDialog({
     limit: 1000,
   });
   const { subCategories } = useSubCategories(selectedMainCategoryId || 0, {
+    limit: 1000,
+  });
+  const { subSubCategories } = useSubSubCategories(selectedSubCategoryId || 0, {
     limit: 1000,
   });
   const [governorateOpen, setGovernorateOpen] = useState(false);
@@ -108,6 +115,7 @@ export function CreateProfessionalDialog({
           toast.success("Professional created successfully");
           form.reset();
           setSelectedMainCategoryId(null);
+          setSelectedSubCategoryId(null);
           setOpen(false);
         },
         onError: (error: unknown) => {
@@ -332,7 +340,8 @@ export function CreateProfessionalDialog({
                         onValueChange={(value) => {
                           const categoryId = parseInt(value);
                           setSelectedMainCategoryId(categoryId);
-                          // Reset subcategories when main category changes
+                          // Reset sub-category and sub-sub categories when main category changes
+                          setSelectedSubCategoryId(null);
                           field.onChange([]);
                         }}
                       >
@@ -356,20 +365,59 @@ export function CreateProfessionalDialog({
                 )}
               />
 
-              {/* Sub Categories Multi-Select */}
+              {/* Sub Category Selection */}
               {selectedMainCategoryId && (
                 <FormField
                   control={form.control}
                   name="categoryIds"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Sub Categories *</FormLabel>
+                      <FormLabel>Sub Category *</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={selectedSubCategoryId?.toString() || ""}
+                          onValueChange={(value) => {
+                            const categoryId = parseInt(value);
+                            setSelectedSubCategoryId(categoryId);
+                            // Reset sub-sub categories when sub category changes
+                            field.onChange([]);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a sub category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subCategories?.map((category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={category.id.toString()}
+                              >
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Sub-Sub Categories Multi-Select */}
+              {selectedSubCategoryId && (
+                <FormField
+                  control={form.control}
+                  name="categoryIds"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Specializations *</FormLabel>
                       <FormControl>
                         <MultiSelect
                           options={
-                            subCategories?.map((subCategory) => ({
-                              label: subCategory.name,
-                              value: subCategory.id.toString(),
+                            subSubCategories?.map((subSubCategory) => ({
+                              label: subSubCategory.name,
+                              value: subSubCategory.id.toString(),
                             })) || []
                           }
                           onValueChange={(values) => {
@@ -379,7 +427,7 @@ export function CreateProfessionalDialog({
                             field.onChange(categoryIds);
                           }}
                           defaultValue={field.value.map((id) => id.toString())}
-                          placeholder="Select sub categories"
+                          placeholder="Select specializations"
                           variant="default"
                           animation={0.2}
                           maxCount={3}

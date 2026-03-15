@@ -31,6 +31,7 @@ import { useGovernorates } from "@/hooks/data/use-governorates";
 import {
   useMainCategories,
   useSubCategories,
+  useSubSubCategories,
 } from "@/hooks/data/use-categories";
 import { MultiSelect } from "@/components/multi-select";
 import {
@@ -67,6 +68,9 @@ export function CreateCandidateDialog({
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState<
     number | null
   >(null);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<
+    number | null
+  >(null);
   const [governorateOpen, setGovernorateOpen] = useState(false);
 
   const { mutate: createCandidate, isPending } = useCreateCandidate();
@@ -74,6 +78,9 @@ export function CreateCandidateDialog({
   const { governorates } = useGovernorates({ limit: 1000 });
   const { mainCategories } = useMainCategories({ type: "JOB", limit: 1000 });
   const { subCategories } = useSubCategories(selectedMainCategoryId || 0, {
+    limit: 1000,
+  });
+  const { subSubCategories } = useSubSubCategories(selectedSubCategoryId || 0, {
     limit: 1000,
   });
 
@@ -99,6 +106,7 @@ export function CreateCandidateDialog({
         toast.success("Candidate created successfully");
         form.reset();
         setSelectedMainCategoryId(null);
+        setSelectedSubCategoryId(null);
         setOpen(false);
       },
       onError: (error: unknown) => {
@@ -323,7 +331,8 @@ export function CreateCandidateDialog({
                         onValueChange={(value) => {
                           const categoryId = parseInt(value);
                           setSelectedMainCategoryId(categoryId);
-                          // Reset subcategories when main category changes
+                          // Reset department and job positions when main category changes
+                          setSelectedSubCategoryId(null);
                           field.onChange([]);
                         }}
                       >
@@ -347,20 +356,59 @@ export function CreateCandidateDialog({
                 )}
               />
 
-              {/* Sub Categories Multi-Select */}
+              {/* Department Selection */}
               {selectedMainCategoryId && (
                 <FormField
                   control={form.control}
                   name="categoryIds"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Sub Categories *</FormLabel>
+                      <FormLabel>Department *</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={selectedSubCategoryId?.toString() || ""}
+                          onValueChange={(value) => {
+                            const categoryId = parseInt(value);
+                            setSelectedSubCategoryId(categoryId);
+                            // Reset job positions when department changes
+                            field.onChange([]);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subCategories?.map((category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={category.id.toString()}
+                              >
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Job Positions Multi-Select */}
+              {selectedSubCategoryId && (
+                <FormField
+                  control={form.control}
+                  name="categoryIds"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Job Positions *</FormLabel>
                       <FormControl>
                         <MultiSelect
                           options={
-                            subCategories?.map((subCategory) => ({
-                              label: subCategory.name,
-                              value: subCategory.id.toString(),
+                            subSubCategories?.map((subSubCategory) => ({
+                              label: subSubCategory.name,
+                              value: subSubCategory.id.toString(),
                             })) || []
                           }
                           onValueChange={(values) => {
@@ -370,7 +418,7 @@ export function CreateCandidateDialog({
                             field.onChange(categoryIds);
                           }}
                           defaultValue={field.value.map((id) => id.toString())}
-                          placeholder="Select sub categories"
+                          placeholder="Select job positions"
                           variant="default"
                           animation={0.2}
                           maxCount={3}

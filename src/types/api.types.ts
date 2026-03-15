@@ -78,7 +78,12 @@ export interface SubCategory {
   nameEn: string;
   nameAr: string;
   type: "SERVICE" | "JOB";
+  parentId: number | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  _count: {
+    professionals: number;
+    candidates: number;
+  };
 }

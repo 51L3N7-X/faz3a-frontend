@@ -53,6 +53,7 @@ export type CreateCandidateFormData = z.output<typeof CreateCandidateSchema>;
 
 export const UpdateCandidateSchema = CreateCandidateSchema.extend({
   password: PasswordSchema.optional().or(z.literal("")),
+  isActive: z.boolean().optional(),
 });
 
 export type UpdateCandidateFormInput = z.input<typeof UpdateCandidateSchema>;

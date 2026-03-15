@@ -1,8 +1,22 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { MultiSelect } from "@/components/multi-select";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -13,26 +27,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useState } from "react";
-import { toast } from "sonner";
-import {
-  UpdateCandidateFormInput,
-  UpdateCandidateSchema,
-} from "@/lib/schemas/candidates";
-import { handleApiError } from "@/lib/utils/form-error-handler";
-import { useGovernorates } from "@/hooks/data/use-governorates";
-import {
-  useMainCategories,
-  useSubCategories,
-} from "@/hooks/data/use-categories";
-import { useUpdateCandidate } from "@/hooks/data/use-candidate";
-import { MultiSelect } from "@/components/multi-select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -40,22 +38,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUpdateCandidate } from "@/hooks/data/use-candidate";
+import { Switch } from "@/components/ui/switch";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  useCategoryHierarchy,
+  useMainCategories,
+  useSubCategories,
+  useSubSubCategories,
+} from "@/hooks/data/use-categories";
+import { useGovernorates } from "@/hooks/data/use-governorates";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+  UpdateCandidateFormInput,
+  UpdateCandidateSchema,
+} from "@/lib/schemas/candidates";
 import { cn } from "@/lib/utils";
+import { handleApiError } from "@/lib/utils/form-error-handler";
 import { Candidate } from "@/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 type EditCandidateDialogProps = {
   children?: React.ReactNode;
@@ -73,9 +76,35 @@ export function EditCandidateDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
+
+  // Determine the first-leaf category to resolve the hierarchy from
+  const firstCategoryId = candidate.categories[0]?.id ?? null;
+
+  // For candidates created via the mobile app, parentCategoryId / subCategoryId
+  // may be null. useCategoryHierarchy will automatically walk up the tree:
+  //   jobPosition → department (subCategoryId) → mainCategory (parentCategoryId)
+  const {
+    subCategoryId: resolvedSubCategoryId,
+    mainCategoryId: resolvedMainCategoryId,
+    isLoading: isResolvingHierarchy,
+  } = useCategoryHierarchy(
+    // Only resolve when the backend fields are missing
+    !candidate.parentCategoryId && firstCategoryId ? firstCategoryId : null,
+  );
+
+  // The effective IDs: prefer values already on the candidate (frontend-created),
+  // fall back to the resolved values (app-created)
+  const effectiveMainCategoryId =
+    candidate.parentCategoryId || resolvedMainCategoryId || null;
+  const effectiveSubCategoryId =
+    candidate.subCategoryId || resolvedSubCategoryId || null;
+
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState<
     number | null
-  >(candidate.parentCategoryId || null);
+  >(effectiveMainCategoryId);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<
+    number | null
+  >(effectiveSubCategoryId);
   const [governorateOpen, setGovernorateOpen] = useState(false);
 
   const { mutateAsync: updateCandidate, isPending } = useUpdateCandidate();
@@ -88,6 +117,9 @@ export function EditCandidateDialog({
   const { subCategories } = useSubCategories(selectedMainCategoryId || 0, {
     limit: 1000,
   });
+  const { subSubCategories } = useSubSubCategories(selectedSubCategoryId || 0, {
+    limit: 1000,
+  });
 
   const form = useForm<UpdateCandidateFormInput>({
     resolver: zodResolver(UpdateCandidateSchema),
@@ -96,20 +128,57 @@ export function EditCandidateDialog({
       phone: candidate.user.phone,
       firstName: candidate.user.firstName,
       lastName: candidate.user.lastName,
-      password: "", // Password is optional for updates
+      password: "",
       categoryIds: candidate.categories.map((category) => category.id),
       governorateId: candidate.governorate.id,
       candidatePhone: candidate.phone,
       yearsOfExp: candidate.yearsOfExp,
       bio: candidate.bio,
+      isActive: candidate.isActive,
     },
   });
+
+  // When switching to a different candidate, reset all state
+  useEffect(() => {
+    form.reset({
+      email: candidate.user.email,
+      phone: candidate.user.phone,
+      firstName: candidate.user.firstName,
+      lastName: candidate.user.lastName,
+      password: "",
+      categoryIds: candidate.categories.map((category) => category.id),
+      governorateId: candidate.governorate.id,
+      candidatePhone: candidate.phone,
+      yearsOfExp: candidate.yearsOfExp,
+      bio: candidate.bio,
+      isActive: candidate.isActive,
+    });
+    // Reset selects to the effective values at the time of candidate change;
+    // the resolver effect below will update once API data arrives.
+    setSelectedMainCategoryId(candidate.parentCategoryId || null);
+    setSelectedSubCategoryId(candidate.subCategoryId || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidate.id]);
+
+  // Sync resolved hierarchy into state once the API calls complete
+  useEffect(() => {
+    if (effectiveMainCategoryId && !selectedMainCategoryId) {
+      setSelectedMainCategoryId(effectiveMainCategoryId);
+    }
+  }, [effectiveMainCategoryId, selectedMainCategoryId]);
+
+  useEffect(() => {
+    if (effectiveSubCategoryId && !selectedSubCategoryId) {
+      setSelectedSubCategoryId(effectiveSubCategoryId);
+    }
+  }, [effectiveSubCategoryId, selectedSubCategoryId]);
 
   async function onSubmit(values: UpdateCandidateFormInput) {
     // Only include password if it was changed (not empty)
     const updateData = {
       ...values,
       password: values.password || undefined,
+      isActive: values.isActive ?? true,
     };
 
     await updateCandidate(
@@ -129,7 +198,7 @@ export function EditCandidateDialog({
             skipUnauthorized: true,
           });
         },
-      }
+      },
     );
   }
 
@@ -291,7 +360,8 @@ export function EditCandidateDialog({
                             {field.value
                               ? governorates?.find(
                                   (gov) =>
-                                    gov.id.toString() === field.value.toString()
+                                    gov.id.toString() ===
+                                    field.value.toString(),
                                 )?.name
                               : "Select governorate"}
                             <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -318,7 +388,7 @@ export function EditCandidateDialog({
                                         gov.id.toString() ===
                                           field.value?.toString()
                                           ? "opacity-100"
-                                          : "opacity-0"
+                                          : "opacity-0",
                                       )}
                                     />
                                     {gov.name}
@@ -348,7 +418,8 @@ export function EditCandidateDialog({
                         onValueChange={(value) => {
                           const categoryId = parseInt(value);
                           setSelectedMainCategoryId(categoryId);
-                          // Reset subcategories when main category changes
+                          // Reset department and job positions when main category changes
+                          setSelectedSubCategoryId(null);
                           field.onChange([]);
                         }}
                       >
@@ -372,30 +443,69 @@ export function EditCandidateDialog({
                 )}
               />
 
-              {/* Sub Categories Multi-Select */}
+              {/* Department Selection */}
               {selectedMainCategoryId && (
                 <FormField
                   control={form.control}
                   name="categoryIds"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Sub Categories *</FormLabel>
+                      <FormLabel>Department *</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={selectedSubCategoryId?.toString() || ""}
+                          onValueChange={(value) => {
+                            const categoryId = parseInt(value);
+                            setSelectedSubCategoryId(categoryId);
+                            // Reset job positions when department changes
+                            field.onChange([]);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subCategories?.map((category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={category.id.toString()}
+                              >
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Job Positions Multi-Select */}
+              {selectedSubCategoryId && (
+                <FormField
+                  control={form.control}
+                  name="categoryIds"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Job Positions *</FormLabel>
                       <FormControl>
                         <MultiSelect
                           options={
-                            subCategories?.map((subCategory) => ({
-                              label: subCategory.name,
-                              value: subCategory.id.toString(),
+                            subSubCategories?.map((subSubCategory) => ({
+                              label: subSubCategory.name,
+                              value: subSubCategory.id.toString(),
                             })) || []
                           }
                           onValueChange={(values) => {
                             const categoryIds = values.map((val) =>
-                              parseInt(val)
+                              parseInt(val),
                             );
                             field.onChange(categoryIds);
                           }}
                           defaultValue={field.value.map((id) => id.toString())}
-                          placeholder="Select sub categories"
+                          placeholder="Select job positions"
                           variant="default"
                           animation={0.2}
                           maxCount={3}
@@ -427,10 +537,37 @@ export function EditCandidateDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Active Status Switch */}
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 md:col-span-2">
+                    <div className="space-y-0.5">
+                      <FormLabel>Active Status</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value ?? true}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Updating..." : "Update Candidate"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isPending || isResolvingHierarchy}
+            >
+              {isPending
+                ? "Updating..."
+                : isResolvingHierarchy
+                  ? "Loading categories..."
+                  : "Update Candidate"}
             </Button>
           </form>
         </Form>

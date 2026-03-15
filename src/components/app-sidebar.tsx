@@ -3,21 +3,14 @@
 import * as React from "react";
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
   Command,
-  Frame,
   GalleryVerticalEnd,
   Hash,
   Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
   User,
   User2,
 } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main";
 import { NavOperations } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -28,7 +21,6 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { ProfessionalAddDialog } from "./professional-add-dialog";
 
 // This is sample data.
 const data = {
@@ -160,9 +152,9 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ side = "left", ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" side={side} {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>

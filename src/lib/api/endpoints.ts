@@ -42,5 +42,7 @@ export const endpoints = {
     deleteCategory: (id: number) => `/categories/${id}`,
     getSubCategories: (parentId: number) =>
       `/categories/${parentId}/subcategories`,
+    getSubSubCategories: (parentId: number) =>
+      `/categories/${parentId}/subsubcategories`,
   },
 };

@@ -12,6 +12,7 @@ export interface Professional {
   createdAt: string;
   updatedAt: string;
   parentCategoryId: number;
+  subCategoryId: number | null;
 }
 
 export interface Candidate {
@@ -28,6 +29,7 @@ export interface Candidate {
   createdAt: string;
   updatedAt: string;
   parentCategoryId: number;
+  subCategoryId: number | null;
 }
 
 export interface Category {

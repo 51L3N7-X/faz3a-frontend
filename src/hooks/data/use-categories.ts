@@ -4,7 +4,9 @@ import { transformPaginatedResponse } from "../utils/transformResponse";
 import {
   getMainCategories,
   getCategory,
+  getCategoryById,
   getSubCategories,
+  getSubSubCategories,
   updateSubCategory,
   createSubCategory,
 } from "@/services/categories.service";
@@ -96,7 +98,7 @@ export const useCategory = (id: number) => {
   });
 };
 
-export function useDeleteCategory(isSubcategory = false, parentId?: number) {
+export function useDeleteCategory(isSubcategory = false, parentId?: number, isLevel2 = false) {
   const queryClient = useQueryClient();
   const { refetch } = useMainCategories();
 
@@ -112,9 +114,17 @@ export function useDeleteCategory(isSubcategory = false, parentId?: number) {
       queryClient.invalidateQueries({ queryKey: ["category"] });
       
       if (isSubcategory && parentId) {
-        queryClient.invalidateQueries({ 
-          queryKey: ["subCategories", parentId] 
-        });
+        if (isLevel2) {
+          // For Level 2 (Job Positions), invalidate subSubCategories
+          queryClient.invalidateQueries({ 
+            queryKey: ["subSubCategories", parentId] 
+          });
+        } else {
+          // For Level 1 (Departments), invalidate subCategories
+          queryClient.invalidateQueries({ 
+            queryKey: ["subCategories", parentId] 
+          });
+        }
       }
       
       refetch();
@@ -122,7 +132,7 @@ export function useDeleteCategory(isSubcategory = false, parentId?: number) {
   });
 }
 
-export const useCreateSubCategory = (parentId: number) => {
+export const useCreateSubCategory = (parentId: number, isLevel2 = false) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -134,23 +144,91 @@ export const useCreateSubCategory = (parentId: number) => {
       parentId: number;
     }) => createSubCategory(data, parentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["subCategories", parentId],
-      });
+      if (isLevel2) {
+        // For Level 2 (Job Positions), invalidate subSubCategories
+        queryClient.invalidateQueries({
+          queryKey: ["subSubCategories", parentId],
+        });
+      } else {
+        // For Level 1 (Departments), invalidate subCategories
+        queryClient.invalidateQueries({
+          queryKey: ["subCategories", parentId],
+        });
+      }
     },
   });
 };
 
-export const useUpdateSubCategory = (id: string, parentId: string) => {
+export const useUpdateSubCategory = (id: string, parentId: string, isLevel2 = false) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateCategoryInput) =>
       updateSubCategory(Number(id), data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["subCategories", Number(parentId)],
-      });
+      if (isLevel2) {
+        // For Level 2 (Job Positions), invalidate subSubCategories
+        queryClient.invalidateQueries({
+          queryKey: ["subSubCategories", Number(parentId)],
+        });
+      } else {
+        // For Level 1 (Departments), invalidate subCategories
+        queryClient.invalidateQueries({
+          queryKey: ["subCategories", Number(parentId)],
+        });
+      }
     },
   });
+};
+
+/** Sub-Sub Categories (Level 2 - Job Positions) */
+export const useSubSubCategories = (parentId: number, params?: QueryParams) => {
+  const queryResult = useQuery({
+    queryKey: ["subSubCategories", parentId, params],
+    queryFn: async () => {
+      try {
+        return await getSubSubCategories(parentId, params);
+      } catch (error) {
+        console.error(error);
+        throw error;
+      }
+    },
+    enabled: !!parentId,
+  });
+
+  return transformPaginatedResponse(queryResult, "subSubCategories");
+};
+
+/**
+ * Given a leaf-level job-position category ID, walk up two levels:
+ *   jobPosition (level 2) → department/subCategory (level 1) → mainCategory (level 0)
+ *
+ * Returns { subCategoryId, mainCategoryId } so the edit dialog can
+ * pre-populate all three cascade selects automatically, even for candidates
+ * whose parentCategoryId / subCategoryId are not stored on the profile.
+ */
+export const useCategoryHierarchy = (leafCategoryId: number | null) => {
+  // Fetch the leaf category (job position) to get its parentId (= department)
+  const { data: jobPosition, isLoading: isLoadingJobPosition } = useQuery({
+    queryKey: ["category", leafCategoryId],
+    queryFn: () => getCategoryById(leafCategoryId!),
+    enabled: !!leafCategoryId,
+  });
+
+  const subCategoryId = jobPosition?.parentId ?? null;
+
+  // Fetch the department to get its parentId (= main category)
+  const { data: department, isLoading: isLoadingDepartment } = useQuery({
+    queryKey: ["category", subCategoryId],
+    queryFn: () => getCategoryById(subCategoryId!),
+    enabled: !!subCategoryId,
+  });
+
+  const mainCategoryId = department?.parentId ?? null;
+
+  return {
+    subCategoryId,
+    mainCategoryId,
+    isLoading: isLoadingJobPosition || isLoadingDepartment,
+  };
 };

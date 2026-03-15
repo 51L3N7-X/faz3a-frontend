@@ -13,11 +13,13 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import React from "react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLocale } from "next-intl";
 
 function generateBreadcrumbs(pathname: string) {
   // Remove locale prefix if present
@@ -34,17 +36,20 @@ function generateBreadcrumbs(pathname: string) {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const locale = useLocale();
+  const isRTL = locale === "ar";
+  
   return (
     <SidebarProvider>
       {/* <Toaster richColors></Toaster> */}
-      <AppSidebar />
+      <AppSidebar side={isRTL ? "right" : "left"} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 justify-between">
           <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger className={isRTL ? "-mr-1" : "-ml-1"} />
             <Separator
               orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
+              className={`${isRTL ? "ml-2" : "mr-2"} data-[orientation=vertical]:h-4`}
             />
             <Breadcrumb>
               <BreadcrumbList>
@@ -57,7 +62,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </BreadcrumbItem>
                     {index < arr.length - 1 && (
                       <BreadcrumbSeparator>
-                        <ChevronRight className="h-4 w-4" />
+                        {isRTL ? (
+                          <ChevronLeft className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
                       </BreadcrumbSeparator>
                     )}
                   </React.Fragment>
@@ -65,7 +74,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <ModeToggle className="mr-4" />
+          <div className={`flex items-center gap-2 ${isRTL ? "ml-4" : "mr-4"}`}>
+            <LanguageSwitcher />
+            <ModeToggle className="" />
+          </div>
         </header>
         <div className="p-4 pt-0">{children}</div>
       </SidebarInset>
