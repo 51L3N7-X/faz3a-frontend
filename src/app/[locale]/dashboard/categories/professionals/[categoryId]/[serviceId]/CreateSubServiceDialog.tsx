@@ -30,7 +30,7 @@ import { handleApiError } from "@/lib/utils/form-error-handler";
 const createSubServiceSchema = z.object({
   nameEn: z.string().min(1, "English name is required"),
   nameAr: z.string().min(1, "Arabic name is required"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type CreateSubServiceFormData = z.infer<typeof createSubServiceSchema>;

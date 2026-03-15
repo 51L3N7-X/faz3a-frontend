@@ -31,7 +31,7 @@ import { MainCategory } from "@/types";
 const editProfessionalCategorySchema = z.object({
   nameEn: z.string().min(1, "English name is required"),
   nameAr: z.string().min(1, "Arabic name is required"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type EditProfessionalCategoryFormData = z.infer<typeof editProfessionalCategorySchema>;

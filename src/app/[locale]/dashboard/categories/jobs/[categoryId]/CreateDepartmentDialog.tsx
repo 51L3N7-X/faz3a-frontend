@@ -30,7 +30,7 @@ import { handleApiError } from "@/lib/utils/form-error-handler";
 const createDepartmentSchema = z.object({
   nameEn: z.string().min(1, "English name is required"),
   nameAr: z.string().min(1, "Arabic name is required"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type CreateDepartmentFormData = z.infer<typeof createDepartmentSchema>;
@@ -87,7 +87,7 @@ export default function CreateDepartmentDialog({
         <DialogHeader>
           <DialogTitle>Create New Department</DialogTitle>
           <DialogDescription>
-            Create a new department under "{parentName}". This will be a level 1 category (القسم) that can contain job positions.
+            Create a new department under &quot;{parentName}&quot;. This will be a level 1 category (القسم) that can contain job positions.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

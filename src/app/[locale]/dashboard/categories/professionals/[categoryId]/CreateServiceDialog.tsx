@@ -30,7 +30,7 @@ import { handleApiError } from "@/lib/utils/form-error-handler";
 const createServiceSchema = z.object({
   nameEn: z.string().min(1, "English name is required"),
   nameAr: z.string().min(1, "Arabic name is required"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type CreateServiceFormData = z.infer<typeof createServiceSchema>;
